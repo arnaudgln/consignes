@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="fr" data-vue="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#F4ECD8">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Consignes de sécurité</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icone-192.png">
+<script>
+/* ============================== RÉGLAGES ============================== */
+const CONFIG = {
+  couleurs: {
+    creme: "#F4ECD8",   // fond de la carte
+    papier: "#FBF6EA",  // fond des cases
+    marine: "#14284B",
+    orange: "#F39A1E",
+    rouge: "#C8281E",
+    vert: "#1E8A4C",
+  },
+  detection: {
+    // Écran intérieur = fenêtre peu allongée ET assez grande. Sinon : couverture.
+    // Fold 8 : couverture 10:16 (1,6), intérieur 4:3 (1,33).
+    ratioMaxInterieur: 1.47,   // grand côté / petit côté
+    petitCoteMinInterieur: 520, // en px CSS, évite l'erreur dans un onglet de navigateur
+  },
+  charniere: {
+    gouttiere: 7,            // largeur de la zone vide au centre, en % de l'écran
+    ratioPagesEmpilees: 0.8, // largeur/hauteur sous laquelle la charnière est horizontale
+  },
+  apercu: {
+    ratioCouverture: 10 / 16,
+    ratioInterieur: 4 / 3,
+    legendeCouverture: "Écran externe (fermé)",
+    legendeInterieur: "Écran intérieur (déplié)",
+  },
+  rechargement: { zone: 0.18, delaiMs: 450 }, // coin haut gauche, double tap
+
+  textes: {
+    compagnie: "Frandroid Airlines",
+    consignes: "Consignes de sécurité",
+    vol: "Vol 2026 › 2027",
+    depliez: "Dépliez-moi",
+    enTete: "Recommandations de vol 2027",
+  },
+  pictos: { ips: "60", unite: "ips", poids: "12 kg" },
+  cases: [
+    { picto: "ceinture", legende: "Bouclez votre ceinture et réglez votre appareil en mode performance.", mention: "60 ips minimum", ton: "ok" },
+    { picto: "masque", legende: "Mettez le vôtre d’abord, puis passez votre voisin en navigation par gestes.", mention: "NON aux trois boutons", ton: "non" },
+    { picto: "usbc", legende: "Prise USB-C à chaque siège.", mention: "Chargeur non fourni", ton: "non" },
+    { picto: "avion", legende: "Mode avion activé… sauf le meilleur smartphone de l’année.", mention: "Celui-là reste allumé", ton: "ok" },
+    { picto: "bagage", legende: "Bagages sous le siège devant vous.", mention: "12 kg maximum", ton: "info" },
+    { picto: "sortie", legende: "Sorties de secours : repérez la plus proche." },
+  ],
+};
+/* ====================================================================== */
+
+// Le choix de l'écran est confié au CSS : il bascule dans la même image que le
+// redimensionnement du dépliage, sans attendre le moindre script.
+const params = new URLSearchParams(location.search);
+const R = CONFIG.detection, H = CONFIG.charniere, A = CONFIG.apercu;
+const fraction = (r) => `${Math.round(r * 1000)}/1000`;
+const REQUETE_INTERIEUR =
+  `(min-width:${R.petitCoteMinInterieur}px) and (min-height:${R.petitCoteMinInterieur}px)` +
+  ` and (max-aspect-ratio:${fraction(R.ratioMaxInterieur)}) and (min-aspect-ratio:${fraction(1 / R.ratioMaxInterieur)})`;
+
+const racine = document.documentElement;
+if (params.has("apercu")) racine.dataset.vue = "apercu";
+else if (["couverture", "interieur"].includes(params.get("mode"))) racine.dataset.vue = params.get("mode");
+
+for (const [nom, valeur] of Object.entries(CONFIG.couleurs)) racine.style.setProperty("--" + nom, valeur);
+racine.style.setProperty("--g", H.gouttiere + "cqw");
+racine.style.setProperty("--g-v", H.gouttiere + "cqh");
+racine.style.setProperty("--r-couv", A.ratioCouverture);
+racine.style.setProperty("--r-int", A.ratioInterieur);
+
+document.write(`<style>
+@media ${REQUETE_INTERIEUR} {
+  html[data-vue=auto] .vue-couverture { visibility: hidden; }
+  html[data-vue=auto] .vue-interieur { visibility: visible; }
+}
+@container ecran (max-aspect-ratio: ${fraction(H.ratioPagesEmpilees)}) {
+  .ecran .interieur {
+    --bande: min(8cqh, 13cqw);
+    padding: var(--my) var(--mx);
+    grid-template: "h1" var(--bande) "p1" 1fr "." var(--g-v) "p2" 1fr "h2" var(--bande) / 1fr;
+  }
+  .ecran .bande-haut, .ecran .bande-bas { height: calc(var(--my) + var(--bande)); background: var(--marine); }
+  .ecran .titre { font-size: min(5.2cqw, 3.5cqh); }
+  .ecran .titre-2 { justify-content: flex-start; }
+  .ecran .page { grid-template: 1fr / repeat(3, 1fr); padding: 1.4cqh 0; }
+}
+</style>`);
+</script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  position: fixed; inset: 0; overflow: hidden;
+  background: var(--creme); color: var(--marine);
+  font-family: Roboto, "Helvetica Neue", Arial, "Liberation Sans", sans-serif;
+  font-weight: 800; line-height: 1.14;
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none; overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+}
+::-webkit-scrollbar { display: none; }
+
+/* --- Les deux écrans sont toujours construits, seul l'un est visible --- */
+.ecran { position: fixed; inset: 0; overflow: hidden; background: var(--creme); color: var(--marine); container: ecran / size; }
+.vue-interieur { visibility: hidden; }
+html[data-vue=interieur] .vue-couverture { visibility: hidden; }
+html[data-vue=interieur] .vue-interieur { visibility: visible; }
+
+/* --- Couverture --- */
+.couverture {
+  position: absolute; inset: 0; display: grid;
+  grid-template: "marque" 34% "titre" 1fr "depli" 21% / 1fr;
+}
+.c-marque {
+  grid-area: marque; background: var(--marine); color: var(--creme);
+  display: flex; flex-direction: column; justify-content: flex-end; gap: 1.6cqh;
+  padding: calc(env(safe-area-inset-top, 0px) + 3cqh) calc(env(safe-area-inset-right, 0px) + 7cqw) 3.4cqh calc(env(safe-area-inset-left, 0px) + 7cqw);
+}
+.c-marque svg { width: min(30cqw, 15cqh); height: auto; flex: none; }
+.c-compagnie { font-size: min(13.4cqw, 7.6cqh); font-weight: 900; letter-spacing: -.01em; line-height: 1.02; }
+.c-titre {
+  grid-area: titre; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 2.6cqh;
+  padding: 2cqh calc(env(safe-area-inset-right, 0px) + 7cqw) 2cqh calc(env(safe-area-inset-left, 0px) + 7cqw);
+}
+.c-consignes { font-size: min(14.4cqw, 8.2cqh); font-weight: 900; line-height: 1.04; }
+.c-vol {
+  font-size: min(7.4cqw, 4.2cqh); background: var(--orange); color: var(--marine);
+  padding: .32em .7em; border-radius: .4em; white-space: nowrap;
+}
+.c-depli {
+  grid-area: depli; display: flex; align-items: center; gap: 5cqw; background: var(--papier);
+  border-top: max(4px, .8cqh) solid var(--marine);
+  padding: 1.4cqh calc(env(safe-area-inset-right, 0px) + 7cqw) calc(env(safe-area-inset-bottom, 0px) + 1.4cqh) calc(env(safe-area-inset-left, 0px) + 7cqw);
+}
+.c-depli svg { width: min(24cqw, 17cqh); height: auto; flex: none; }
+.c-depli span { font-size: min(9cqw, 5.6cqh); font-weight: 900; line-height: 1.05; white-space: nowrap; }
+
+@container ecran (min-aspect-ratio: 1/1) {
+  .couverture { grid-template: "marque titre" 1fr "marque depli" 32% / 42% 1fr; }
+  .c-marque { justify-content: center; gap: 4cqh; padding: calc(env(safe-area-inset-top, 0px) + 4cqh) 3cqw calc(env(safe-area-inset-bottom, 0px) + 4cqh) calc(env(safe-area-inset-left, 0px) + 4cqw); }
+  .c-marque svg { width: min(20cqw, 30cqh); }
+  .c-compagnie { font-size: min(7.4cqw, 13cqh); }
+  .c-titre { gap: 3.4cqh; padding: calc(env(safe-area-inset-top, 0px) + 3cqh) calc(env(safe-area-inset-right, 0px) + 4cqw) 2cqh 4cqw; }
+  .c-consignes { font-size: min(7.6cqw, 13.5cqh); }
+  .c-vol { font-size: min(3.8cqw, 7cqh); }
+  .c-depli { gap: 2.6cqw; padding: 1.5cqh calc(env(safe-area-inset-right, 0px) + 4cqw) calc(env(safe-area-inset-bottom, 0px) + 1.5cqh) 4cqw; }
+  .c-depli svg { width: min(15cqw, 30cqh); }
+  .c-depli span { font-size: min(4.8cqw, 9.4cqh); }
+}
+
+/* --- Intérieur : double page, rien dans la gouttière centrale --- */
+.interieur {
+  --st: env(safe-area-inset-top, 0px); --sb: env(safe-area-inset-bottom, 0px);
+  --sg: env(safe-area-inset-left, 0px); --sd: env(safe-area-inset-right, 0px);
+  --mx: max(var(--sg), var(--sd), 1.6cqw); --my: max(var(--st), var(--sb));
+  --bande: min(9.5cqh, 8cqw); --pied: min(2.2cqh, 1.6cqw);
+  position: absolute; inset: 0; display: grid;
+  padding: var(--st) var(--mx) var(--sb);
+  grid-template: "h1 . h2" var(--bande) "p1 . p2" 1fr "pd pd pd" var(--pied) / 1fr var(--g) 1fr;
+}
+.bande-haut { position: absolute; inset: 0 0 auto; height: calc(var(--st) + var(--bande)); background: var(--marine); }
+.bande-bas { position: absolute; inset: auto 0 0; height: calc(var(--sb) + var(--pied)); background: var(--orange); }
+.titre {
+  position: relative; display: flex; align-items: center; gap: .45em; min-width: 0;
+  color: var(--creme); font-size: min(2.85cqw, 4.7cqh); font-weight: 900; white-space: nowrap;
+}
+.titre-1 { grid-area: h1; }
+.titre-2 { grid-area: h2; justify-content: flex-end; }
+.titre svg { height: 1.25em; width: 1.25em; flex: none; }
+.page { position: relative; display: grid; grid-template: repeat(3, 1fr) / 1fr; gap: min(1.5cqh, 1.5cqw); padding: 1.5cqh 0; min-width: 0; min-height: 0; }
+.page-1 { grid-area: p1; }
+.page-2 { grid-area: p2; }
+
+.case {
+  position: relative; min-width: 0; min-height: 0; container: case / size;
+  background: var(--papier); border: max(3px, .4cqmin) solid var(--marine); border-radius: min(1.8cqw, 2.4cqh); overflow: hidden;
+}
+.case-in {
+  position: absolute; inset: 0; display: grid; gap: 3cqw; align-items: center;
+  grid-template: 1fr / min(36cqw, 92cqh) 1fr; padding: 4cqh 3cqw 4cqh 2.5cqw;
+}
+.picto { position: relative; width: 100%; height: 100%; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.picto > svg { width: 100%; height: 100%; display: block; }
+.num {
+  position: absolute; left: 0; top: 0; z-index: 1; display: grid; place-items: center;
+  width: 1.6em; height: 1.5em; border-radius: 0 0 .45em 0; font-size: min(5.4cqw, 11cqh); font-weight: 900;
+  background: var(--marine); color: var(--creme);
+}
+.txt { --f: min(5.2cqw, 11.2cqh); display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: .42em; font-size: var(--f); min-width: 0; min-height: 0; height: 100%; }
+.leg { font-weight: 800; }
+.mention {
+  display: inline-flex; align-items: center; gap: .32em; font-size: .9em; font-weight: 900;
+  padding: .24em .5em .24em .3em; border-radius: .4em; color: var(--papier); line-height: 1.08;
+}
+.mention svg { width: 1.15em; height: 1.15em; flex: none; }
+.mention.ok { background: var(--vert); }
+.mention.non { background: var(--rouge); }
+.mention.info { background: var(--orange); color: var(--marine); padding-left: .5em; }
+
+@container case (max-aspect-ratio: 11/10) {
+  .case-in { grid-template: min(42cqh, 90cqw) 1fr / 1fr; gap: 1.5cqh; padding: 3cqh 5cqw; }
+  .num { font-size: min(10cqw, 6cqh); }
+  .txt { --f: min(9.4cqw, 5.6cqh); }
+}
+
+/* --- Pictogrammes --- */
+.f-m { fill: var(--marine); } .f-o { fill: var(--orange); } .f-r { fill: var(--rouge); }
+.f-v { fill: var(--vert); } .f-c { fill: var(--creme); } .f-p { fill: var(--papier); }
+.f-t { fill: var(--marine); fill-opacity: .17; }
+.t-m, .t-o, .t-r, .t-v, .t-c, .t-p { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 8; }
+.t-m { stroke: var(--marine); } .t-o { stroke: var(--orange); } .t-r { stroke: var(--rouge); }
+.t-v { stroke: var(--vert); } .t-c { stroke: var(--creme); } .t-p { stroke: var(--papier); }
+svg text { font-family: inherit; font-weight: 900; text-anchor: middle; }
+
+/* Boucles lentes et discrètes, aucun clignotement */
+.anim { transform-box: fill-box; animation: 7s ease-in-out infinite both; }
+.a-sangle-g { animation-name: sangle-g; } .a-sangle-d { animation-name: sangle-d; }
+.a-masque { animation-name: masque; } .a-tube { animation-name: tube; transform-origin: 50% 0; }
+.a-lueur { animation-name: lueur; animation-duration: 5s; }
+.a-valise { animation-name: valise; animation-duration: 8s; }
+.a-fleche { animation-name: fleche; animation-duration: 4s; }
+.a-depli { animation-name: depli; animation-duration: 6s; transform-origin: 0 50%; }
+@keyframes sangle-g { 0%, 12% { transform: translateX(-13px); } 42%, 100% { transform: none; } }
+@keyframes sangle-d { 0%, 12% { transform: translateX(13px); } 42%, 100% { transform: none; } }
+@keyframes masque { 0%, 8% { transform: translateY(-40px); } 38%, 100% { transform: none; } }
+@keyframes tube { 0%, 8% { transform: scaleY(.45); } 38%, 100% { transform: none; } }
+@keyframes lueur { 0%, 100% { opacity: .18; } 50% { opacity: .9; } }
+@keyframes valise { 0%, 10% { transform: translateX(26px); } 45%, 100% { transform: none; } }
+@keyframes fleche { 0%, 100% { transform: none; } 50% { transform: translateX(9px); } }
+@keyframes depli { 0%, 12% { transform: scaleX(.08); } 55%, 100% { transform: none; } }
+
+/* --- ?apercu : les deux écrans côte à côte --- */
+html[data-vue=apercu], html[data-vue=apercu] body { background: #23262c; }
+html[data-vue=apercu] #scene {
+  --h: min(82vh, calc(90vw / (var(--r-couv) + var(--r-int) + .06)));
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; gap: calc(var(--h) * .06);
+}
+html[data-vue=apercu] .cadre { display: flex; flex-direction: column; align-items: center; gap: 12px; color: #d9dbe0; font-size: 15px; font-weight: 600; }
+html[data-vue=apercu] .ecran {
+  position: relative; inset: auto; visibility: visible; height: var(--h); border-radius: calc(var(--h) * .03);
+  outline: 8px solid #08090b;
+}
+html[data-vue=apercu] .vue-couverture { width: calc(var(--h) * var(--r-couv)); }
+html[data-vue=apercu] .vue-interieur { width: calc(var(--h) * var(--r-int)); }
+.legende { display: none; }
+html[data-vue=apercu] .legende { display: block; }
+
+#diag { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 9; padding: 10px 16px; border-radius: 8px; background: var(--marine); color: var(--creme); font-size: 18px; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<script>
+const T = CONFIG.textes, P = CONFIG.pictos;
+
+const AVION = "M12 2c1 0 1.7 1 1.7 2.2V9l8.3 5v2.3l-8.3-2.5V19l2.3 1.7V22L12 21l-4 1v-1.3l2.3-1.7v-5.2L2 16.3V14l8.3-5V4.2C10.3 3 11 2 12 2z";
+const avion = (x, y, taille, classe, angle = 0) =>
+  `<path class="${classe}" d="${AVION}" transform="translate(${x} ${y}) rotate(${angle}) scale(${taille / 24}) translate(-12 -12)"/>`;
+const barre = (x1, y1, x2, y2) =>
+  `<path class="t-p" style="stroke-width:13" d="M${x1} ${y1}L${x2} ${y2}"/><path class="t-r" style="stroke-width:8" d="M${x1} ${y1}L${x2} ${y2}"/>`;
+
+const PICTOS = {
+  ceinture: `
+    <path class="f-t" d="M46 30c0-9 13-12 17-3l16 92h58c9 0 9 22 0 22H70c-6 0-10-3-11-9z"/>
+    <circle class="f-m" cx="92" cy="40" r="18"/>
+    <path class="t-m" style="stroke-width:30" d="M86 76l-5 46"/>
+    <path class="t-m" style="stroke-width:25" d="M82 128h50"/>
+    <path class="t-m" style="stroke-width:19" d="M134 130l6 42"/>
+    <path class="t-m" style="stroke-width:13" d="M141 180h18"/>
+    <g class="anim a-sangle-g"><path class="t-o" style="stroke-width:10" d="M56 112l32 8"/></g>
+    <g class="anim a-sangle-d"><path class="t-o" style="stroke-width:10" d="M122 112l-24 8"/></g>
+    <rect class="f-p" x="84" y="111" width="18" height="17" rx="4"/>
+    <rect class="f-o" x="87" y="114" width="12" height="11" rx="2"/>
+    <rect class="f-m" x="130" y="10" width="60" height="84" rx="11"/>
+    <rect class="f-p" x="137" y="18" width="46" height="68" rx="5"/>
+    <text class="f-v" x="160" y="55" font-size="29">${P.ips}</text>
+    <text class="f-m" x="160" y="76" font-size="17">${P.unite}</text>`,
+
+  masque: `
+    <rect class="f-m" x="50" y="8" width="136" height="16" rx="6"/>
+    <path class="f-t" d="M112 126c0-18 11-26 31-26s31 8 31 26z"/>
+    <circle class="f-t" cx="143" cy="78" r="21"/>
+    <path class="f-m" d="M24 126c0-20 14-30 38-30s38 10 38 30z"/>
+    <circle class="f-m" cx="62" cy="68" r="25"/>
+    <path class="t-o anim a-tube" style="stroke-width:5" d="M72 24v48"/>
+    <g class="anim a-masque">
+      <path class="t-o" style="stroke-width:5" d="M46 78l-8-7M78 78l8-7"/>
+      <path class="f-o" d="M47 72h30c2 0 3 1 3 3-1 10-8 16-18 16s-17-6-18-16c0-2 1-3 3-3z"/>
+    </g>
+    <rect class="f-m" x="10" y="136" width="180" height="56" rx="28"/>
+    <path class="f-c" d="M60 149v30l-21-15z"/>
+    <circle class="f-c" cx="100" cy="164" r="15"/>
+    <rect class="f-c" x="134" y="150" width="28" height="28" rx="4"/>
+    ${barre(24, 190, 176, 138)}`,
+
+  usbc: `
+    <rect class="f-t" x="12" y="44" width="94" height="148" rx="14"/>
+    <rect class="t-o anim a-lueur" style="stroke-width:7" x="20" y="60" width="78" height="46" rx="23"/>
+    <rect class="f-m" x="30" y="70" width="58" height="26" rx="13"/>
+    <rect class="f-c" x="40" y="79" width="38" height="8" rx="4"/>
+    <circle class="f-p" cx="146" cy="132" r="46"/>
+    <path class="t-m" style="stroke-width:6" d="M136 108V96M156 108V96"/>
+    <rect class="f-m" x="122" y="106" width="48" height="52" rx="9"/>
+    <path class="f-o" d="M149 113l-12 20h9l-3 16 13-22h-9z"/>
+    <circle class="t-r" style="stroke-width:9" cx="146" cy="132" r="46"/>
+    <path class="t-r" style="stroke-width:9" d="M114 100l64 64"/>`,
+
+  avion: `
+    <circle class="f-o anim a-lueur" cx="140" cy="90" r="50" style="fill-opacity:.32"/>
+    <rect class="f-t" x="14" y="48" width="70" height="128" rx="12"/>
+    <rect class="f-m" x="22" y="58" width="54" height="108" rx="6"/>
+    ${avion(49, 112, 40, "f-c")}
+    <rect class="f-m" x="102" y="22" width="78" height="142" rx="13"/>
+    <rect class="f-p" x="110" y="32" width="62" height="122" rx="6"/>
+    <path class="f-o" d="M141 56l9 19 21 3-15 15 4 21-19-10-19 10 4-21-15-15 21-3z" transform="translate(7.2 8.5) scale(.9)"/>
+    <circle class="f-v" cx="170" cy="164" r="22"/>
+    <path class="t-p" style="stroke-width:7" d="M160 164l8 8 13-15"/>`,
+
+  bagage: `
+    <path class="t-m" style="stroke-width:20" d="M60 44l10 70"/>
+    <path class="t-m" style="stroke-width:20" d="M70 118h66"/>
+    <path class="t-m" style="stroke-width:10" d="M74 128v50"/>
+    <path class="t-m" style="stroke-width:7" d="M12 186h176"/>
+    <g class="anim a-valise">
+      <path class="t-m" style="stroke-width:6" d="M112 140v-6h26v6"/>
+      <rect class="f-o" x="92" y="140" width="68" height="40" rx="7"/>
+      <path class="t-m" style="stroke-width:5" d="M110 150v20M142 150v20"/>
+    </g>
+    <rect class="f-m" x="112" y="26" width="76" height="42" rx="10"/>
+    <text class="f-c" x="150" y="55" font-size="24">${P.poids}</text>`,
+
+  sortie: `
+    <rect class="f-v" x="8" y="8" width="184" height="184" rx="20"/>
+    <rect class="t-c" style="stroke-width:9" x="132" y="44" width="44" height="130" rx="3"/>
+    <circle class="f-c" cx="85" cy="58" r="14"/>
+    <path class="t-c" style="stroke-width:17" d="M80 84l-10 36"/>
+    <path class="t-c" style="stroke-width:10" d="M80 86l24 12 16-10M78 86L54 96l-8 20"/>
+    <path class="t-c" style="stroke-width:12" d="M70 122l28 14-2 34M68 124l-12 26-26 4"/>
+    <g class="anim a-fleche"><path class="t-c" style="stroke-width:9" d="M60 28h66M110 15l16 13-16 13"/></g>`,
+};
+
+const ICONES = {
+  ok: `<svg viewBox="0 0 24 24"><path class="t-p" style="stroke-width:3.6" d="M5 13l5 5L19 7"/></svg>`,
+  non: `<svg viewBox="0 0 24 24"><path class="t-p" style="stroke-width:3.6" d="M6 6l12 12M18 6L6 18"/></svg>`,
+  info: "",
+};
+
+const COUVERTURE_AVION = `<svg viewBox="0 0 120 64" aria-hidden="true">
+  <path class="t-o" style="stroke-width:5" d="M4 44h34"/><path class="t-o" style="stroke-width:5" d="M14 56h20"/>
+  ${avion(78, 32, 60, "f-c", 90)}</svg>`;
+const COUVERTURE_DEPLI = `<svg viewBox="4 6 119 78" aria-hidden="true">
+  <rect class="f-m" x="8" y="10" width="54" height="70" rx="8"/>
+  <rect class="f-o anim a-depli" x="65" y="10" width="54" height="70" rx="8"/></svg>`;
+
+const htmlCase = (c, i) => `<article class="case"><span class="num">${i + 1}</span><div class="case-in">
+  <div class="picto"><svg viewBox="0 0 200 200" aria-hidden="true">${PICTOS[c.picto]}</svg></div>
+  <div class="txt"><p class="leg">${c.legende}</p>${c.mention ? `<p class="mention ${c.ton}">${ICONES[c.ton]}<span>${c.mention}</span></p>` : ""}</div>
+</div></article>`;
+
+document.getElementById("scene").innerHTML = `
+<div class="cadre"><section class="ecran vue-couverture"><div class="couverture">
+  <header class="c-marque">${COUVERTURE_AVION}<h1 class="c-compagnie">${T.compagnie}</h1></header>
+  <div class="c-titre"><h2 class="c-consignes">${T.consignes}</h2><p class="c-vol">${T.vol}</p></div>
+  <div class="c-depli">${COUVERTURE_DEPLI}<span>${T.depliez}</span></div>
+</div></section><p class="legende">${CONFIG.apercu.legendeCouverture}</p></div>
+<div class="cadre"><section class="ecran vue-interieur"><div class="interieur">
+  <div class="bande-haut"></div><div class="bande-bas"></div>
+  <h1 class="titre titre-1">${T.enTete}</h1>
+  <p class="titre titre-2"><svg viewBox="0 0 24 24" aria-hidden="true">${avion(12, 12, 24, "f-o", 90)}</svg>${T.compagnie}</p>
+  <div class="page page-1">${CONFIG.cases.slice(0, 3).map((c, i) => htmlCase(c, i)).join("")}</div>
+  <div class="page page-2">${CONFIG.cases.slice(3, 6).map((c, i) => htmlCase(c, i + 3)).join("")}</div>
+</div></section><p class="legende">${CONFIG.apercu.legendeInterieur}</p></div>`;
+
+// Double tap dans le coin haut gauche : recharger
+let dernierTap = 0;
+addEventListener("pointerdown", (e) => {
+  const { zone, delaiMs } = CONFIG.rechargement;
+  if (e.clientX > innerWidth * zone || e.clientY > innerHeight * zone) return;
+  if (e.timeStamp - dernierTap < delaiMs) location.reload();
+  dernierTap = e.timeStamp;
+});
+for (const type of ["contextmenu", "selectstart", "dragstart", "gesturestart"]) addEventListener(type, (e) => e.preventDefault());
+
+// Écran toujours allumé
+let verrou = null;
+async function garderAllume() {
+  try {
+    if ("wakeLock" in navigator && !verrou && document.visibilityState === "visible") {
+      verrou = await navigator.wakeLock.request("screen");
+      verrou.addEventListener("release", () => { verrou = null; garderAllume(); });
+    }
+  } catch { verrou = null; }
+}
+garderAllume();
+document.addEventListener("visibilitychange", garderAllume);
+addEventListener("resize", garderAllume);
+addEventListener("pointerdown", garderAllume);
+
+// ?diag : affiche ce que voit la détection, pour régler les seuils sur le téléphone
+if (params.has("diag")) {
+  const d = document.body.appendChild(document.createElement("div"));
+  d.id = "diag";
+  const maj = () => {
+    const l = Math.max(innerWidth, innerHeight) / Math.min(innerWidth, innerHeight);
+    d.textContent = `${innerWidth} × ${innerHeight} · ratio ${l.toFixed(2)} · ${matchMedia(REQUETE_INTERIEUR).matches ? "intérieur" : "couverture"}`;
+  };
+  maj(); addEventListener("resize", maj);
+}
+
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
