@@ -20,10 +20,11 @@ const CONFIG = {
     vert: "#1E8A4C",
   },
   detection: {
-    // Écran intérieur = fenêtre peu allongée ET assez grande. Sinon : couverture.
+    // Écran intérieur = écran physique assez large, ou fenêtre large et peu allongée.
+    // L'écran physique passe en premier : les barres du navigateur ne le changent pas.
     // Fold 8 : couverture 10:16 (1,6), intérieur 4:3 (1,33).
-    ratioMaxInterieur: 1.47,   // grand côté / petit côté
-    petitCoteMinInterieur: 520, // en px CSS, évite l'erreur dans un onglet de navigateur
+    petitCoteMinInterieur: 540, // en px CSS
+    ratioMaxInterieur: 1.47,    // grand côté / petit côté de la fenêtre
   },
   charniere: {
     gouttiere: 7,            // largeur de la zone vide au centre, en % de l'écran
@@ -36,6 +37,7 @@ const CONFIG = {
     legendeInterieur: "Écran intérieur (déplié)",
   },
   rechargement: { zone: 0.18, delaiMs: 450 }, // coin haut gauche, double tap
+  pleinEcran: "Touchez l’écran pour passer en plein écran", // seulement hors appli installée
 
   textes: {
     compagnie: "Frandroid Airlines",
@@ -62,6 +64,7 @@ const params = new URLSearchParams(location.search);
 const R = CONFIG.detection, H = CONFIG.charniere, A = CONFIG.apercu;
 const fraction = (r) => `${Math.round(r * 1000)}/1000`;
 const REQUETE_INTERIEUR =
+  `(min-device-width:${R.petitCoteMinInterieur}px) and (min-device-height:${R.petitCoteMinInterieur}px), ` +
   `(min-width:${R.petitCoteMinInterieur}px) and (min-height:${R.petitCoteMinInterieur}px)` +
   ` and (max-aspect-ratio:${fraction(R.ratioMaxInterieur)}) and (min-aspect-ratio:${fraction(1 / R.ratioMaxInterieur)})`;
 
@@ -253,11 +256,18 @@ html[data-vue=apercu] .vue-interieur { width: calc(var(--h) * var(--r-int)); }
 .legende { display: none; }
 html[data-vue=apercu] .legende { display: block; }
 
+#plein-ecran {
+  position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 5vh); transform: translateX(-50%); z-index: 8;
+  width: max-content; max-width: 86vw; padding: .6em 1em; border-radius: .5em; text-align: center;
+  background: var(--marine); color: var(--creme); border: 3px solid var(--orange); font-size: clamp(16px, 4.4vmin, 26px);
+}
+#plein-ecran[hidden] { display: none; }
 #diag { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 9; padding: 10px 16px; border-radius: 8px; background: var(--marine); color: var(--creme); font-size: 18px; white-space: nowrap; }
 </style>
 </head>
 <body>
 <div id="scene"></div>
+<div id="plein-ecran" hidden></div>
 <script>
 const T = CONFIG.textes, P = CONFIG.pictos;
 
@@ -404,18 +414,40 @@ document.addEventListener("visibilitychange", garderAllume);
 addEventListener("resize", garderAllume);
 addEventListener("pointerdown", garderAllume);
 
+// Plein écran : l'appli installée l'est d'office. Dans le navigateur, il faut un toucher.
+const invite = document.getElementById("plein-ecran");
+invite.textContent = CONFIG.pleinEcran;
+const modePlein = matchMedia("(display-mode: fullscreen)");
+const enPleinEcran = () => !!(document.fullscreenElement || document.webkitFullscreenElement) || modePlein.matches;
+const majInvite = () => {
+  invite.hidden = enPleinEcran() || params.has("apercu") || !matchMedia("(pointer: coarse)").matches;
+};
+function passerEnPleinEcran() {
+  if (enPleinEcran() || params.has("apercu")) return;
+  const el = document.documentElement, demande = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (demande) Promise.resolve(demande.call(el, { navigationUI: "hide" })).catch(() => {});
+}
+addEventListener("click", passerEnPleinEcran);
+addEventListener("pointerup", passerEnPleinEcran);
+for (const type of ["fullscreenchange", "webkitfullscreenchange"]) document.addEventListener(type, majInvite);
+modePlein.addEventListener("change", majInvite);
+majInvite();
+
 // ?diag : affiche ce que voit la détection, pour régler les seuils sur le téléphone
 if (params.has("diag")) {
   const d = document.body.appendChild(document.createElement("div"));
   d.id = "diag";
   const maj = () => {
     const l = Math.max(innerWidth, innerHeight) / Math.min(innerWidth, innerHeight);
-    d.textContent = `${innerWidth} × ${innerHeight} · ratio ${l.toFixed(2)} · ${matchMedia(REQUETE_INTERIEUR).matches ? "intérieur" : "couverture"}`;
+    d.textContent = `fenêtre ${innerWidth} × ${innerHeight} · écran ${screen.width} × ${screen.height} · ratio ${l.toFixed(2)} · ${matchMedia(REQUETE_INTERIEUR).matches ? "intérieur" : "couverture"}`;
   };
   maj(); addEventListener("resize", maj);
 }
 
 if ("serviceWorker" in navigator && location.protocol === "https:") {
+  // Une nouvelle version vient d'arriver : on l'affiche tout de suite
+  const dejaPilotee = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (dejaPilotee) location.reload(); });
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 </script>
